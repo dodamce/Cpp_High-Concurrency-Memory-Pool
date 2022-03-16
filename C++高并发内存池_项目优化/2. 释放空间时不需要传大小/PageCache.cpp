@@ -2,86 +2,86 @@
 
 PageCache PageCache::_sInst;
 
-Span* PageCache::NewSpan(size_t NumPage) {//NumPageÊÇÒ³Êı
+Span* PageCache::NewSpan(size_t NumPage) {//NumPageæ˜¯é¡µæ•°
 	assert(NumPage > 0);
 
-	if (NumPage >= NPAGE) {//Èç¹ûÒªÉêÇëµÄÄÚ´æ´óÓÚÍ°µÄ¸öÊı£¬Ö±½ÓÏò¶ÑÉêÇë¿Õ¼ä
+	if (NumPage >= NPAGE) {//å¦‚æœè¦ç”³è¯·çš„å†…å­˜å¤§äºæ¡¶çš„ä¸ªæ•°ï¼Œç›´æ¥å‘å †ç”³è¯·ç©ºé—´
 		void* ptr = SystemAlloc(NumPage);
 		Span* span = _SpanPool.New();
 		span->_PageID = (PAGE_ID)ptr >> PAGESIZE;
 		span->_Num = NumPage;
-		//±£´æÆğÊ¼Ò³ºÅ£¬·½±ãÊÍ·ÅÄÚ´æ
+		//ä¿å­˜èµ·å§‹é¡µå·ï¼Œæ–¹ä¾¿é‡Šæ”¾å†…å­˜
 		IdSpanMap[span->_PageID] = span;
 		return span;
 	}
 	else {
-		//¿´µ±Ç°Î»ÖÃÍ°ÖĞÊÇ·ñÓĞSpan
+		//çœ‹å½“å‰ä½ç½®æ¡¶ä¸­æ˜¯å¦æœ‰Span
 		if (!_SpanList[NumPage].Empty()) {
-			return _SpanList->Pop();
+			return _SpanList[NumPage]Pop();
 		}
-		//¶ÔÓ¦Î»ÖÃµÄÍ°ÊÇ¿Õ£¬¼ì²éºóÃæÍ°ÀïÓĞÃ»ÓĞSpan,½«´óSpanÇĞ·Ö³ÉĞ¡Span
+		//å¯¹åº”ä½ç½®çš„æ¡¶æ˜¯ç©ºï¼Œæ£€æŸ¥åé¢æ¡¶é‡Œæœ‰æ²¡æœ‰Span,å°†å¤§Spanåˆ‡åˆ†æˆå°Span
 		for (size_t i = NumPage + 1; i < NPAGE; i++) {
-			if (!_SpanList[i].Empty()) {//ÓĞÒ»¸öÍ°´æÔÚ£¬ÇĞ·Ö´óSpan³ÉNumPageÒ³SpanºÍN-NumPageÒ³µÄSpan
+			if (!_SpanList[i].Empty()) {//æœ‰ä¸€ä¸ªæ¡¶å­˜åœ¨ï¼Œåˆ‡åˆ†å¤§SpanæˆNumPageé¡µSpanå’ŒN-NumPageé¡µçš„Span
 				Span* NumPageSpan = _SpanPool.New();
 				Span* NSpan = _SpanList[i].Pop();
-				//Í·ÇĞ
+				//å¤´åˆ‡
 				NumPageSpan->_PageID = NSpan->_PageID;
 				NumPageSpan->_Num = NumPage;
 				NSpan->_PageID += NumPage;
 				NSpan->_Num -= NumPage;
 
-				//½«ÇĞÏÂµÄSpan¹Òµ½ÆäËûÍ°ÉÏ
+				//å°†åˆ‡ä¸‹çš„SpanæŒ‚åˆ°å…¶ä»–æ¡¶ä¸Š
 				_SpanList[NSpan->_Num].Insert(_SpanList[NSpan->_Num].begin(), NSpan);
-				//±£´æNSpanÇ°ºóÒ³µÄÓ³Éä¹ØÏµ£¬·½±ã»ØÊÕ
+				//ä¿å­˜NSpanå‰åé¡µçš„æ˜ å°„å…³ç³»ï¼Œæ–¹ä¾¿å›æ”¶
 				IdSpanMap[NSpan->_PageID] = NSpan;
-				IdSpanMap[NSpan->_PageID + NSpan->_Num - 1] = NSpan;//ÖĞ¼äÒ³Ã»±ØÒª¼ÓÈëÓ³ÉäÖĞ£¬Ç°ºóÁ½Ò³ÎªÁË·½±ã»ØÊÕ
+				IdSpanMap[NSpan->_PageID + NSpan->_Num - 1] = NSpan;//ä¸­é—´é¡µæ²¡å¿…è¦åŠ å…¥æ˜ å°„ä¸­ï¼Œå‰åä¸¤é¡µä¸ºäº†æ–¹ä¾¿å›æ”¶
 
-				//ÌîÈëPAGE_IDÓëSpan*Ó³ÉäÖĞ
-				for (PAGE_ID i = 0; i < NumPageSpan->_Num; i++) {//ÇĞÁËNumÒ³
+				//å¡«å…¥PAGE_IDä¸Span*æ˜ å°„ä¸­
+				for (PAGE_ID i = 0; i < NumPageSpan->_Num; i++) {//åˆ‡äº†Numé¡µ
 					IdSpanMap[NumPageSpan->_PageID + i] = NumPageSpan;
 				}
 
 				return NumPageSpan;
 			}
 		}
-		//ËùÓĞÍ°¶¼Ã»ÓĞSpan,Ö±½ÓÏò¶ÑÖĞÉêÇëÒ»´ó¿é¿Õ¼ä£¬½«Õâ¿é¿Õ¼ä¹Òµ½×îºóÒ»¸öÍ°ÉÏ
+		//æ‰€æœ‰æ¡¶éƒ½æ²¡æœ‰Span,ç›´æ¥å‘å †ä¸­ç”³è¯·ä¸€å¤§å—ç©ºé—´ï¼Œå°†è¿™å—ç©ºé—´æŒ‚åˆ°æœ€åä¸€ä¸ªæ¡¶ä¸Š
 		Span* BigSpan = _SpanPool.New();
 		void* ptr = SystemAlloc(NPAGE - 1);
 		BigSpan->_PageID = (PAGE_ID)ptr >> PAGESIZE;
 		BigSpan->_Num = NPAGE - 1;
 		_SpanList[BigSpan->_Num].Insert(_SpanList[BigSpan->_Num].begin(), BigSpan);
-		//ÔÚµ÷ÓÃ×Ô¼ºÏòCentral Cache·¢ËÍ¿Õ¼ä
+		//åœ¨è°ƒç”¨è‡ªå·±å‘Central Cacheå‘é€ç©ºé—´
 		return NewSpan(NumPage);
 	}
 }
 
 Span* PageCache::MapObjToSpan(void* obj) {
 
-	std::unique_lock<std::mutex>lock(_PageMtx);//Ó³Éä±»¶à¸öÏß³Ì·ÃÎÊĞèÒª¼ÓËø·ÀÖ¹Ïß³Ì°²È«£¬³öÁËº¯ÊıËø×Ô¶¯ÊÍ·Å
-	//¼ÆËãobjµÄÒ³ºÅ
+	std::unique_lock<std::mutex>lock(_PageMtx);//æ˜ å°„è¢«å¤šä¸ªçº¿ç¨‹è®¿é—®éœ€è¦åŠ é”é˜²æ­¢çº¿ç¨‹å®‰å…¨ï¼Œå‡ºäº†å‡½æ•°é”è‡ªåŠ¨é‡Šæ”¾
+	//è®¡ç®—objçš„é¡µå·
 	PAGE_ID pageId = (PAGE_ID)obj >> PAGESIZE;
-	//»ñÈ¡Õâ¸öÄÚ´æÊÇÄÇ¸öSpan
+	//è·å–è¿™ä¸ªå†…å­˜æ˜¯é‚£ä¸ªSpan
 	std::unordered_map<PAGE_ID,Span*>::iterator ret = IdSpanMap.find(pageId);
 	if (ret != IdSpanMap.end()) {
 		return ret->second;
 	}
 	else {
-		assert(false);//²»¿ÉÄÜÕÒ²»µ½
+		assert(false);//ä¸å¯èƒ½æ‰¾ä¸åˆ°
 		return nullptr;
 	}
 }
 
-//½«CentralCacheµÄSpan»ØÊÕ,ºÏ²¢ÏàÁÚÒ³
+//å°†CentralCacheçš„Spanå›æ”¶,åˆå¹¶ç›¸é‚»é¡µ
 void PageCache::RetrunPageCache(Span* span) {
 	if (span->_Num >= NPAGE) {
-		//Ö±½ÓÏò¶ÑÉêÇëµÄ¿Õ¼ä´óÓÚ128Ò³µÄ»¹¸øÏµÍ³£¬ÆäÓàµÄ¹ÒÔÚÍ°ÉÏ
+		//ç›´æ¥å‘å †ç”³è¯·çš„ç©ºé—´å¤§äº128é¡µçš„è¿˜ç»™ç³»ç»Ÿï¼Œå…¶ä½™çš„æŒ‚åœ¨æ¡¶ä¸Š
 		void* ptr = (void*)(span->_PageID << PAGESIZE);
 		SystemFree(ptr);
 		_SpanPool.Delete(span);
 	}
 	else {
-		//¶ÔSpanÇ°ºóÒ³½øĞĞºÏ²¢£¬»º½âÄÚ´æËéÆ¬ÍâËéÆ¬ÎÊÌâ
-		while (true) { //ÏòÇ°ºÏ²¢
+		//å¯¹Spanå‰åé¡µè¿›è¡Œåˆå¹¶ï¼Œç¼“è§£å†…å­˜ç¢ç‰‡å¤–ç¢ç‰‡é—®é¢˜
+		while (true) { //å‘å‰åˆå¹¶
 			PAGE_ID prevId = span->_PageID - 1;
 			std::unordered_map<PAGE_ID, Span*>::iterator ret = IdSpanMap.find(prevId);
 			if (ret == IdSpanMap.end()) {
@@ -89,15 +89,15 @@ void PageCache::RetrunPageCache(Span* span) {
 			}
 			else {
 				if (ret->second->IsUse == true) {
-					//Ç°ÃæÏàÁÚÒ³µÄSpanÕıÔÚÊ¹ÓÃµÄÄÚ´æ²»ºÏ²¢
+					//å‰é¢ç›¸é‚»é¡µçš„Spanæ­£åœ¨ä½¿ç”¨çš„å†…å­˜ä¸åˆå¹¶
 					break;
 				}
-				//ºÍÇ°SpanºÏ²¢´óĞ¡³¬¹ı128KBÔòÍ£Ö¹ºÏ²¢,ÎŞ·¨¹ÜÀí
+				//å’Œå‰Spanåˆå¹¶å¤§å°è¶…è¿‡128KBåˆ™åœæ­¢åˆå¹¶,æ— æ³•ç®¡ç†
 				else if (ret->second->_Num + span->_Num >= NPAGE) {
 					break;
 				}
 				else {
-					//ºÏ²¢
+					//åˆå¹¶
 					span->_PageID = ret->second->_PageID;
 					span->_Num += ret->second->_Num;
 					_SpanList[ret->second->_Num].Erase(ret->second);
@@ -105,7 +105,7 @@ void PageCache::RetrunPageCache(Span* span) {
 				}
 			}
 		}
-		//ÏòºóºÏ²¢
+		//å‘ååˆå¹¶
 		while (true) {
 			PAGE_ID nextId = span->_PageID + span->_Num;
 			std::unordered_map<PAGE_ID, Span*>::iterator ret = IdSpanMap.find(nextId);
@@ -128,7 +128,7 @@ void PageCache::RetrunPageCache(Span* span) {
 				}
 			}
 		}
-		//½«ºÏ²¢µÄSpan¹ÒÆğ²¢Ìí¼ÓÓ³Éä
+		//å°†åˆå¹¶çš„SpanæŒ‚èµ·å¹¶æ·»åŠ æ˜ å°„
 		_SpanList[span->_Num].Insert(_SpanList[span->_Num].begin(), span);
 		span->IsUse = false;
 		IdSpanMap[span->_PageID] = span;
