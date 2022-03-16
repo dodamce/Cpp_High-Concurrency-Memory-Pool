@@ -56,6 +56,8 @@ Span* PageCache::NewSpan(size_t NumPage) {//NumPage是页数
 }
 
 Span* PageCache::MapObjToSpan(void* obj) {
+
+	std::unique_lock<std::mutex>lock(_PageMtx);//映射被多个线程访问需要加锁防止线程安全，出了函数锁自动释放
 	//计算obj的页号
 	PAGE_ID pageId = (PAGE_ID)obj >> PAGESIZE;
 	//获取这个内存是那个Span
